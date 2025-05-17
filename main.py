@@ -75,12 +75,56 @@ class Player(pygame.sprite.Sprite):
         self.rect.x = pos[0]
         self.rect.y = pos[1]
         self.speed = 5
-        self.velocity_y = 0
-        self.on_ground = False
 
+
+        self.velosity_y = 0
+        self.on_ground = True
+
+
+
+        self.dir = 'right'
+        self.timer_attack = 0
         self.frame = 0
         self.timer_anime = 0
         self.anime = False
+        self.key = pygame.key.get_pressed()
+        self.velocity_y = 15
+    def jump(self):
+        if self.key[pygame.K_SPACE] and self.on_ground:
+            self.velocity_y = -15
+            self.on_ground = False
+        self.rect.y += self.velocity_y
+        self.velocity_y += 1
+        if self.velocity_y > 10:
+            self.velocity_y = 10
+
+    def attack(self):
+        self.timer_attack += 1
+        if self.key[pygame.K_e] and self.timer_attack / FPS > 1:
+            fireball = Fireball(self.rect.center, self.dir)
+            fireball_group.add(fireball)
+            camera_group.add(fireball)
+            self.timer_attack = 0
+    def move(self):
+        if self.key[pygame.K_d]:
+            self.dir = 'right'
+            self.anime = True
+            self.image = player_image[self.frame]
+            self.rect.x += self.speed
+            if self.rect.right > 1000:
+                self.rect.right = 1000
+                camera_group.update(-self.speed)
+        elif self.key[pygame.K_a]:
+            self.anime = False
+            self.dir = 'left'
+            self.rect.x -= self.speed
+            self.image = pygame.transform.flip(player_image[self.frame], True, False)
+            if self.rect.left < 100:
+                self.rect.left = 100
+                camera_group.update(self.speed)
+
+        else:
+            self.anime = False
 
     def animation(self):
         if self.anime:
@@ -95,29 +139,12 @@ class Player(pygame.sprite.Sprite):
 
     def update(self):
         self.animation()
-        key = pygame.key.get_pressed()
+        self.move()
+        self.jump()
+        self.attack()
+        self.key = pygame.key.get_pressed()
 
-        if key[pygame.K_d]:
-            self.anime = True
-            self.image = player_image[self.frame]
-            self.rect.x += self.speed
-            if self.rect.right > 1000:
-                self.rect.right = 1000
-                camera_group.update(-self.speed)
 
-        if key[pygame.K_a]:
-            self
-            self.rect.x -= self.speed
-            if self.rect.left < 100:
-                self.rect.left = 100
-                camera_group.update(self.speed)
-        if key[pygame.K_SPACE] and self.on_ground:
-            self.velocity_y = -15
-            self.on_ground = False
-        self.rect.y += self.velocity_y
-        self.velocity_y += 1
-        if self.velocity_y > 10:
-            self.velocity_y = 10
 
 
 class Portal(pygame.sprite.Sprite):
@@ -130,6 +157,43 @@ class Portal(pygame.sprite.Sprite):
 
     def update(self, step):
         self.rect.x += step
+
+
+class Fireball(pygame.sprite.Sprite):
+    def __init__(self, pos,dir):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = fireball_image[0]
+        self.rect = self.image.get_rect()
+        self.rect.x = pos[0]
+        self.rect.y = pos[1] - 20
+        self.frame = 0
+        self.anime = True
+        self.timer_anime = 0
+        if dir == 'left':
+            self.speed = -5
+        else:
+            self.speed = 5
+
+
+    def update(self, step):
+        self.animation()
+        self.rect.x +=  self.speed
+        if self.speed < 0:
+            self.image = fireball_image[self.frame]
+        else:
+            self.image = pygame.transform.flip(fireball_image[self.frame], True , False)
+
+
+    def animation(self):
+        if self.anime:
+            self.timer_anime  += 1
+            if self.timer_anime / FPS > 0.1:
+                if self.frame == len(fireball_image) - 1:
+                    self.kill()
+                else:
+                    self.frame += 1
+                self.timer_anime = 0
+
 
 
 class Monetka(pygame.sprite.Sprite):
@@ -175,6 +239,21 @@ class Enemy(pygame.sprite.Sprite):
         if pygame.sprite.spritecollide(self, stop_group, False):
             self.dir *= -1
 
+        self.frame = 0
+        self.timer_anime = 0
+        self.anime = False
+
+    def animation(self):
+        if self.anime:
+            print(self.timer_anime)
+            self.timer_anime += 1
+            if self.timer_anime / FPS > 0.1:
+                if self.frame == len(player_image) - 1:
+                    self.frame = 0
+                else:
+                    self.frame += 1
+                self.timer_anime = 0
+
 
 class Earth(pygame.sprite.Sprite):
     def __init__(self, image, pos):
@@ -205,7 +284,7 @@ class Earth(pygame.sprite.Sprite):
 
 
 def restart():
-    global player_group, earth_group, water_group, box_group, center_group, camera_group, player
+    global player_group, earth_group, water_group, box_group, center_group, camera_group, stop_group , player , fireball_group
     player_group = pygame.sprite.Group()
     earth_group = pygame.sprite.Group()
     water_group = pygame.sprite.Group()
@@ -214,6 +293,7 @@ def restart():
     player = Player(player_image, (400, 300))
     player_group.add(player)
     camera_group = pygame.sprite.Group()
+    fireball_group = pygame.sprite.Group()
 
 
 def game_lvl():
@@ -228,7 +308,11 @@ def game_lvl():
     box_group.draw(sc)
     center_group.update(0)
     center_group.draw(sc)
+    fireball_group.update(0)
+    fireball_group.draw(sc)
     pygame.display.update()
+
+
 
 
 def drawMaps(nameFile):
@@ -262,6 +346,12 @@ def drawMaps(nameFile):
                 water = Water(water_image, pos)
                 water_group.add(water)
                 camera_group.add(water)
+
+
+
+
+
+
 
 
 
